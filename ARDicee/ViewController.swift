@@ -85,7 +85,32 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     }
 
     // MARK: - ARSCNViewDelegate
-    
+    //gets called when there is a touch in the view or in the window
+    //ARKit converts the touch param into a real world location
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        //First checks if touches were detected. Making sure the method was not called by accident.
+        
+        if let touch = touches.first { //Touch.first is the first location that the users touches on the screen. multitouch is not enabled.
+            //This method returns the current location of a UITouch object in the coordinate system of the specified view. Because the touch object might have been forwarded to a view from another view, this method performs any necessary conversion of the touch location to the coordinate system of the specified view.
+            //The return object is a CGPoint
+            let touchLocation = touch.location(in: sceneView) //Returns the location of the touch dete
+            
+            //Hit testing searches for real-world objects or surfaces detected through the AR session's processing of the camera image. A 2D point in the view's coordinate system can refer to any point along a 3D line that starts at the device camera and extends in a direction determined by the device orientation and camera projection. This method searches along that line, returning all objects that intersect it in order of distance from the camera.
+            //HOW IT WORKS:
+            // You are runnign a program on your screen and you tap a point on the screen. That triggers the touchesBagen method, looking for the location
+            // of that touch.
+            // The original touch locatio has is a 2D spot on the phone screen.
+            // Adds the Z component to make it 3D
+            let results = sceneView.hitTest(touchLocation, types: .existingPlaneUsingExtent)
+            
+            //This will tell us whether we touched an existing plane or not
+            if !results.isEmpty {
+                print("touched the plane")
+            } else {
+                print("touched somewhere else")
+            }
+        }
+    }
     //detects a horizontal surface and gives it a width and height
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         //Checks to see if the detected anchor is a flat plane or not
