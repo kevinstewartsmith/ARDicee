@@ -11,7 +11,9 @@ import SceneKit
 import ARKit
 
 class ViewController: UIViewController, ARSCNViewDelegate {
-
+    
+    var diceArray = [SCNNode]()
+    
     @IBOutlet var sceneView: ARSCNView!
     
     override func viewDidLoad() {
@@ -60,11 +62,12 @@ class ViewController: UIViewController, ARSCNViewDelegate {
 //        // Set the scene to the view
 //        sceneView.scene = scene
     }
-    
+    // Notifies the view controller that its view is about to be added to a view hierarchy
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
         // Create a session configuration
+        // what is a session configuration?
         let configuration = ARWorldTrackingConfiguration()
         
         configuration.planeDetection = .horizontal // detects planes and triggers the renderer delegate method.
@@ -97,17 +100,87 @@ class ViewController: UIViewController, ARSCNViewDelegate {
             
             //Hit testing searches for real-world objects or surfaces detected through the AR session's processing of the camera image. A 2D point in the view's coordinate system can refer to any point along a 3D line that starts at the device camera and extends in a direction determined by the device orientation and camera projection. This method searches along that line, returning all objects that intersect it in order of distance from the camera.
             //HOW IT WORKS:
-            // You are runnign a program on your screen and you tap a point on the screen. That triggers the touchesBagen method, looking for the location
+            // You are runnign a program on your screen and you tap a point on the screen. That triggers the touchesBegan method, looking for the location
             // of that touch.
-            // The original touch locatio has is a 2D spot on the phone screen.
+            // The original touch location is a 2D spot on the phone screen.
             // Adds the Z component to make it 3D
+            //RETURNS A list of results, sorted from nearest to farthest (in distance from the camera).
             let results = sceneView.hitTest(touchLocation, types: .existingPlaneUsingExtent)
             
             //This will tell us whether we touched an existing plane or not
-            if !results.isEmpty {
-                print("touched the plane")
-            } else {
-                print("touched somewhere else")
+//            if !results.isEmpty {
+//                print("touched the plane")
+//            } else {
+//                print("touched somewhere else")
+//            }
+            
+            if let hitResult = results.first { //tells whether the hit test reurned an array with at least one resut. 
+                print(hitResult)
+                
+                // Create a new scene
+                let diceScene = SCNScene(named: "art.scnassets/diceCollada.scn")!
+                // 3d POsition for placing dice
+                if let diceNode = diceScene.rootNode.childNode(withName: "Dice", recursively: true){
+                //sets position on the plane
+                    diceNode.position = SCNVector3(
+                        x: hitResult.worldTransform.columns.3.x,
+                        y: hitResult.worldTransform.columns.3.y +  (diceNode.boundingSphere.radius *  diceNode.scale.x),
+                        z: hitResult.worldTransform.columns.3.z
+                    )
+                    
+                    diceArray.append(diceNode)
+                    
+                    sceneView.scene.rootNode.addChildNode(diceNode)
+                    
+                    roll(dice: diceNode)
+
+                }
+                //
+                //        // Set the scene to the view
+                //        sceneView.scene = scene
+            }
+        }
+    }
+    
+    func rollAll() {
+        if !diceArray.isEmpty {
+            for dice in diceArray {
+                roll(dice: dice)
+            }
+        }
+    }
+    
+    func roll(dice: SCNNode){
+         //Randomly selects 90, 180, 270, or 360 degrees
+         let randomX = Float(arc4random_uniform(4) + 1) * (Float.pi/2)
+         
+         let randomZ = Float(arc4random_uniform(4) + 1) * (Float.pi/2)
+         
+         //Rotates the 3D object.
+         
+         dice.runAction(SCNAction.rotateBy(
+             x: CGFloat(randomX * 5),
+             y: 0,
+             z: CGFloat(randomZ * 5),
+             duration: 0.5)
+         )
+    }
+    
+    
+    @IBAction func rollAgain(_ sender: UIBarButtonItem) {
+        
+        rollAll()
+    }
+    
+    override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        rollAll()
+    }
+    
+    @IBAction func removeAllDice(_ sender: UIBarButtonItem) {
+        
+        if !diceArray.isEmpty {
+            for dice in diceArray {
+                dice.removeFromParentNode()
             }
         }
     }
