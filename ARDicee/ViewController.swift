@@ -19,7 +19,9 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        self.sceneView.debugOptions = [ARSCNDebugOptions.showFeaturePoints] //throws a bunch of dots everywhere.
+        //self.sceneView.debugOptions = [ARSCNDebugOptions.showFeaturePoints] //throws a bunch of dots everywhere.
+        
+        
         //They are looking for feature points.
         //They aren't easy on reflective surfaces.
         //If there are not feature points
@@ -117,28 +119,33 @@ class ViewController: UIViewController, ARSCNViewDelegate {
             if let hitResult = results.first { //tells whether the hit test reurned an array with at least one resut. 
                 print(hitResult)
                 
-                // Create a new scene
-                let diceScene = SCNScene(named: "art.scnassets/diceCollada.scn")!
-                // 3d POsition for placing dice
-                if let diceNode = diceScene.rootNode.childNode(withName: "Dice", recursively: true){
-                //sets position on the plane
-                    diceNode.position = SCNVector3(
-                        x: hitResult.worldTransform.columns.3.x,
-                        y: hitResult.worldTransform.columns.3.y +  (diceNode.boundingSphere.radius *  diceNode.scale.x),
-                        z: hitResult.worldTransform.columns.3.z
-                    )
-                    
-                    diceArray.append(diceNode)
-                    
-                    sceneView.scene.rootNode.addChildNode(diceNode)
-                    
-                    roll(dice: diceNode)
-
+                addDice(atLocation: hitResult)
+                
                 }
                 //
                 //        // Set the scene to the view
                 //        sceneView.scene = scene
-            }
+            
+        }
+    }
+    
+    func addDice(atLocation location: ARHitTestResult){
+        // Create a new scene
+        let diceScene = SCNScene(named: "art.scnassets/diceCollada.scn")!
+        // 3d POsition for placing dice
+        if let diceNode = diceScene.rootNode.childNode(withName: "Dice", recursively: true){
+        //sets position on the plane
+            diceNode.position = SCNVector3(
+                x: location.worldTransform.columns.3.x,
+                y: location.worldTransform.columns.3.y +  (diceNode.boundingSphere.radius *  diceNode.scale.x),
+                z: location.worldTransform.columns.3.z
+            )
+            
+            diceArray.append(diceNode)
+            
+            sceneView.scene.rootNode.addChildNode(diceNode)
+            
+            roll(dice: diceNode)
         }
     }
     
@@ -184,43 +191,70 @@ class ViewController: UIViewController, ARSCNViewDelegate {
             }
         }
     }
+    
+    //MARK: - ARSCNViewDelegateMethods
+    
+    
+    
     //detects a horizontal surface and gives it a width and height
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         //Checks to see if the detected anchor is a flat plane or not
-        if anchor is ARPlaneAnchor{
+        //The guard statement wants to make a new constant from anchor and downcast it from ARAnchor to ARPlaneAnchor
+        // If it is not able to be downcasted, planeAnchor will be set to nil and the return statement will be executed.
+        guard let planeAnchor = anchor as? ARPlaneAnchor else {return}
+        
             //print("plane detected")
+
+           let planeNode = createPlane(withPlaneAnchor: planeAnchor)
+           node.addChildNode(planeNode)
+            
+        
+        
+        
+            
+ //      if anchor is ARPlaneAnchor{
+//            let planeAnchor = anchor as! ARPlaneAnchor //downcast to plane anchor. checks if anchor is plane
+//
+//
+//
+//
+//        } else {
+//            return
+//        }
+    }
+    
+    //MARK: - Plane Rendering Methods
+    
+    func createPlane(withPlaneAnchor planeAnchor: ARPlaneAnchor) -> SCNNode {
             //Downcasts the the anchor as a plane anchor
-            let planeAnchor = anchor as! ARPlaneAnchor //downcast to plane anchor. checks if anchor is plane
-            
-            //converts dimensions of plane anchor into scene plane
-            //similar to creating sphere
-            //At this point, you are only creating a digital plane. It has nowhere to be because positioning has not been assigned.
-            //All that has been assigned is the width and the height of the plane itself
-            let plane = SCNPlane(width: CGFloat(planeAnchor.extent.x), height: CGFloat(planeAnchor.extent.z))
-            //Uses x and z. This SCNPlane object is the length and the width of the plane anchor that is detected by the renderer
-            
-            //A structural element of a scene graph, representing a position and transform in a 3D coordinate space, to which you can attach geometry,
-            // lights, cameras, or other displayable content.
-            //IN English - It's like a point in a 3D field where something goes. We'll eventually connect this to the plane that we created earlier.
-            let planeNode = SCNNode()
-            planeNode.position = SCNVector3(x: planeAnchor.center.x, y: 0, z: planeAnchor.center.z) //Sets the position of the plane node
-            
-            //TRICKY: Planes have widths and heights, which, in this case are taken from the x and z measurements of the plane achor, however the the
-            planeNode.transform = SCNMatrix4MakeRotation(-Float.pi/2, 1, 0, 0) //The plane is inherently vertical, so this statement turns it over.
-            
-            let gridMaterial = SCNMaterial()
-            gridMaterial.diffuse.contents = UIImage(named: "art.scnassets/grid.png")
-            plane.materials = [gridMaterial]
-            planeNode.geometry = plane
-            
-            node.addChildNode(planeNode)
-            
-            
-        } else {
-            return
-        }
+        //converts dimensions of plane anchor into scene plane
+           //similar to creating sphere
+           //At this point, you are only creating a digital plane. It has nowhere to be because positioning has not been assigned.
+           //All that has been assigned is the width and the height of the plane itself
+           let plane = SCNPlane(width: CGFloat(planeAnchor.extent.x), height: CGFloat(planeAnchor.extent.z))
+           //Uses x and z. This SCNPlane object is the length and the width of the plane anchor that is detected by the renderer
+
+           //A structural element of a scene graph, representing a position and transform in a 3D coordinate space, to which you can attach geometry,
+           // lights, cameras, or other displayable content.
+           //IN English - It's like a point in a 3D field where something goes. We'll eventually connect this to the plane that we created earlier.
+           let planeNode = SCNNode()
+           planeNode.position = SCNVector3(x: planeAnchor.center.x, y: 0, z: planeAnchor.center.z) //Sets the position of the plane node
+
+           //TRICKY: Planes have widths and heights, which, in this case are taken from the x and z measurements of the plane achor, however the the
+           planeNode.transform = SCNMatrix4MakeRotation(-Float.pi/2, 1, 0, 0) //The plane is inherently vertical, so this statement turns it over.
+
+           let gridMaterial = SCNMaterial()
+           gridMaterial.diffuse.contents = UIImage(named: "art.scnassets/grid.png")
+           plane.materials = [gridMaterial]
+           planeNode.geometry = plane
+        
+           return planeNode
     }
 
     
 
 }
+
+
+
+
